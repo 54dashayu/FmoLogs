@@ -296,7 +296,8 @@ function sendUsageStatsBeacon(reason = 'init') {
   if (!callsign && !settings.fmoAddress.value) return
 
   const now = Date.now()
-  const lastKey = `${USAGE_STATS_KEY}:${activeAddress?.id || settings.fmoAddress.value || 'unknown'}`
+  const statsIdentity = callsign || 'anonymous'
+  const lastKey = `${USAGE_STATS_KEY}:${activeAddress?.id || settings.fmoAddress.value || 'unknown'}:${statsIdentity}`
   const lastSent = Number(localStorage.getItem(lastKey) || 0)
   if (now - lastSent < USAGE_STATS_INTERVAL_MS) return
   localStorage.setItem(lastKey, String(now))
