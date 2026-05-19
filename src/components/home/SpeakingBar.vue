@@ -50,6 +50,18 @@
       >
         <span class="audio-icon">{{ isAudioPlaying ? '■' : '▶' }}</span>
       </button>
+      <select
+        class="voice-mode-select"
+        :value="voiceMode"
+        title="声音模式"
+        @click.stop
+        @change.stop="$emit('update-voice-mode', $event.target.value)"
+      >
+        <option value="full">播报呼号+提示</option>
+        <option value="after">通联结束后播报</option>
+        <option value="radio">仅通联</option>
+        <option value="off">关闭所有声音</option>
+      </select>
       <span class="speaking-expand">点击展开</span>
     </div>
   </div>
@@ -113,6 +125,10 @@ const props = defineProps({
   contactCounts: {
     type: Map,
     default: () => new Map()
+  },
+  voiceMode: {
+    type: String,
+    default: 'off'
   }
 })
 
@@ -128,7 +144,7 @@ function getServerName(addressId) {
   return index !== -1 ? (index + 1).toString() : '?'
 }
 
-defineEmits(['click', 'toggle-audio'])
+defineEmits(['click', 'toggle-audio', 'update-voice-mode'])
 </script>
 
 <style scoped>
@@ -242,6 +258,23 @@ defineEmits(['click', 'toggle-audio'])
   color: var(--text-disabled);
 }
 
+.voice-mode-select {
+  flex-shrink: 0;
+  max-width: 120px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.14);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 0.25rem 0.35rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.voice-mode-select:focus {
+  border-color: var(--color-speaking);
+}
+
 /* 发言者项样式 */
 .speaker-item {
   display: inline;
@@ -335,6 +368,11 @@ defineEmits(['click', 'toggle-audio'])
   .audio-toggle-btn .audio-icon {
     font-size: 1rem;
   }
+
+  .voice-mode-select {
+    max-width: 104px;
+    font-size: 0.8rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -371,6 +409,11 @@ defineEmits(['click', 'toggle-audio'])
 
   .audio-toggle-btn .audio-icon {
     font-size: 0.85rem;
+  }
+
+  .voice-mode-select {
+    max-width: 92px;
+    font-size: 0.75rem;
   }
 }
 </style>

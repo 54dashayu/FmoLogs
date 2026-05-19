@@ -1,15 +1,49 @@
 <template>
   <div class="dashboard-view">
     <section class="station-band">
-      <div>
-        <span class="eyebrow">当前中继</span>
-        <h2>{{ currentStation?.name || (loadingStation ? '读取中...' : '未知') }}</h2>
-        <p>
-          {{ controlProtocol }}://{{ controlHost }}
-          <template v-if="currentStation?.uid"> · #{{ currentStation.uid }}</template>
-        </p>
+      <div class="active-contact-card" :class="{ idle: !activeContact }">
+        <span class="eyebrow">{{ activeContact ? '当前通联' : '当前状态' }}</span>
+        <div v-if="activeContact" class="active-contact-main">
+          <div class="active-contact-primary">
+            <h2>{{ activeContact.callsign }}</h2>
+            <p>
+              <span>{{ formatTime(activeContact.timestamp) }}</span>
+              <span v-if="activeContact.grid"> · {{ activeContact.grid }}</span>
+              <span v-if="activeContact.qth"> · {{ activeContact.qth }}</span>
+            </p>
+          </div>
+          <div class="bearing-panel">
+            <div class="compass" :class="{ unavailable: !activeContact.bearing }">
+              <span
+                class="compass-arrow"
+                :style="{ transform: `rotate(${activeContact.bearing?.bearing || 0}deg)` }"
+              >▲</span>
+            </div>
+            <div>
+              <strong>{{ activeContact.bearing?.direction || '方位未知' }}</strong>
+              <span>
+                <template v-if="activeContact.bearing">
+                  {{ activeContact.bearing.bearing }}° · {{ activeContact.bearing.distanceText }}
+                </template>
+                <template v-else>{{ activeContact.bearingHint }}</template>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="active-contact-empty">
+          <h2>当前无人发言</h2>
+          <p>{{ liveStatusText }}</p>
+        </div>
       </div>
       <div class="station-actions">
+        <div class="station-summary">
+          <span class="eyebrow">当前中继</span>
+          <strong>{{ currentStation?.name || (loadingStation ? '读取中...' : '未知') }}</strong>
+          <span>
+            {{ controlProtocol }}://{{ controlHost }}
+            <template v-if="currentStation?.uid"> · #{{ currentStation.uid }}</template>
+          </span>
+        </div>
         <button class="refresh-btn" :disabled="refreshing" @click="refreshNow">
           {{ refreshing ? '刷新中...' : '刷新' }}
         </button>
@@ -106,6 +140,18 @@ const props = defineProps({
   selectedFromCallsign: {
     type: String,
     default: ''
+  },
+  todayContactedCallsigns: {
+    type: Object,
+    default: () => new Set()
+  },
+  contactCounts: {
+    type: Object,
+    default: () => new Map()
+  },
+  voiceMode: {
+    type: String,
+    default: 'off'
   }
 })
 
@@ -118,8 +164,13 @@ const lastRefreshAt = ref(null)
 const switchingRelay = ref('')
 const pinnedRelayNames = ref([])
 const qthCache = ref({})
+const fmoCoordinate = ref(null)
+const voiceStatus = ref('')
 let timer = null
+let audioContext = null
 const REFRESH_INTERVAL_MS = 5000
+const VOICE_REPEAT_INTERVAL_MS = 10 * 60 * 1000
+const VOICE_HISTORY_KEY = 'fmo_dashboard_voice_history'
 
 const controlTarget = computed(() => getControlTarget(props.fmoAddress, props.protocol))
 const controlHost = computed(() => controlTarget.value.host)
@@ -134,12 +185,38 @@ const lastRefreshText = computed(() => {
 
 const liveStatusText = computed(() => {
   if (error.value) return error.value
+  if (voiceStatus.value) return voiceStatus.value
   if (primaryConnected.value) return '实时监听中'
   return '正在连接实时事件'
 })
 
+const currentSpeakingRecord = computed(() => {
+  return [...speakingHistory.value]
+    .filter((item) => !item.endTime && item.callsign)
+    .sort((a, b) => (b.startTime || 0) - (a.startTime || 0))[0] || null
+})
+
+const activeContact = computed(() => {
+  const current = currentSpeakingRecord.value
+  if (!current) return null
+
+  const matchedLog = findMatchingLog(current)
+  const grid = normalizeGrid(current.grid || matchedLog?.toGrid || '')
+  const qth = getRecordQth({ ...matchedLog, toGrid: grid })
+  const bearing = getBearingForGrid(grid)
+
+  return {
+    callsign: getCallsign(current),
+    timestamp: Math.floor(current.startTime / 1000),
+    grid,
+    qth,
+    bearing,
+    bearingHint: getBearingHint(grid)
+  }
+})
+
 const displayRecords = computed(() => {
-  const liveRows = speakingHistory.value.map((item) => {
+  const liveRows = speakingHistory.value.filter((item) => item.endTime).map((item) => {
     const matchedLog = findMatchingLog(item)
     const timestamp = Math.floor(item.startTime / 1000)
     const grid = item.grid || matchedLog?.toGrid || ''
@@ -160,7 +237,11 @@ const displayRecords = computed(() => {
   })
 
   const qsoRows = records.value
-    .filter((record) => !liveRows.some((row) => isSameContact(row, record)))
+    .filter(
+      (record) =>
+        !isSameContact(currentSpeakingRecord.value, record) &&
+        !liveRows.some((row) => isSameContact(row, record))
+    )
     .map((record) => ({
       ...record,
       qth: getRecordQth(record),
@@ -227,6 +308,124 @@ function normalizeGrid(grid) {
   return String(grid || '').trim().toUpperCase()
 }
 
+function gridToLatLng(grid) {
+  const normalized = normalizeGrid(grid)
+  if (normalized.length < 4 || normalized.length % 2 !== 0) return null
+
+  const pairs = normalized.match(/.{1,2}/g) || []
+  let lon = -180
+  let lat = -90
+  const lonSteps = [20, 2, 5 / 60, 5 / 600]
+  const latSteps = [10, 1, 2.5 / 60, 2.5 / 600]
+  let lonPrecision = lonSteps[0]
+  let latPrecision = latSteps[0]
+
+  for (let index = 0; index < pairs.length && index < lonSteps.length; index += 1) {
+    const [lonChar, latChar] = pairs[index]
+    lonPrecision = lonSteps[index]
+    latPrecision = latSteps[index]
+
+    if (index === 0 || index === 2) {
+      const base = index === 0 ? 65 : 65
+      const lonValue = lonChar.charCodeAt(0) - base
+      const latValue = latChar.charCodeAt(0) - base
+      if (lonValue < 0 || latValue < 0) return null
+      lon += lonValue * lonPrecision
+      lat += latValue * latPrecision
+    } else {
+      const lonValue = Number(lonChar)
+      const latValue = Number(latChar)
+      if (Number.isNaN(lonValue) || Number.isNaN(latValue)) return null
+      lon += lonValue * lonPrecision
+      lat += latValue * latPrecision
+    }
+  }
+
+  return {
+    lat: lat + latPrecision / 2,
+    lng: lon + lonPrecision / 2
+  }
+}
+
+function toRadians(value) {
+  return (value * Math.PI) / 180
+}
+
+function toDegrees(value) {
+  return (value * 180) / Math.PI
+}
+
+function calculateDistanceKm(from, to) {
+  const earthRadiusKm = 6371
+  const dLat = toRadians(to.lat - from.lat)
+  const dLng = toRadians(to.lng - from.lng)
+  const lat1 = toRadians(from.lat)
+  const lat2 = toRadians(to.lat)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function calculateBearing(from, to) {
+  const lat1 = toRadians(from.lat)
+  const lat2 = toRadians(to.lat)
+  const dLng = toRadians(to.lng - from.lng)
+  const y = Math.sin(dLng) * Math.cos(lat2)
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)
+  return Math.round((toDegrees(Math.atan2(y, x)) + 360) % 360)
+}
+
+function formatDistance(km) {
+  if (km < 1) return `${Math.round(km * 1000)} m`
+  if (km < 100) return `${km.toFixed(1)} km`
+  return `${Math.round(km)} km`
+}
+
+function bearingToDirection(bearing) {
+  const labels = [
+    '北',
+    '北东北',
+    '东北',
+    '东东北',
+    '东',
+    '东东南',
+    '东南',
+    '南东南',
+    '南',
+    '南西南',
+    '西南',
+    '西西南',
+    '西',
+    '西西北',
+    '西北',
+    '北西北'
+  ]
+  return labels[Math.round(bearing / 22.5) % 16]
+}
+
+function getBearingForGrid(grid) {
+  const from = fmoCoordinate.value
+  const to = gridToLatLng(grid)
+  if (!from || !to) return null
+  const distance = calculateDistanceKm(from, to)
+  const bearing = calculateBearing(from, to)
+  return {
+    bearing,
+    direction: bearingToDirection(bearing),
+    distanceKm: distance,
+    distanceText: formatDistance(distance)
+  }
+}
+
+function getBearingHint(grid) {
+  if (!grid) return '缺少对方网格'
+  if (!fmoCoordinate.value) return '未读取到 FMO 坐标'
+  return '网格格式不可用'
+}
+
 function normalizeRelayName(name) {
   return String(name || '').trim().toLowerCase()
 }
@@ -262,6 +461,160 @@ async function loadQthForGrid(grid) {
 
 function getCallsign(record) {
   return (record?.toCallsign || record?.callsign || '').toUpperCase()
+}
+
+function formatCallsignForSpeech(callsign) {
+  return callsign.split('').join(' ')
+}
+
+function getPreferredSpeechVoice() {
+  if (!window.speechSynthesis?.getVoices) return null
+  const voices = window.speechSynthesis.getVoices()
+  const englishVoices = voices.filter((voice) => /^en[-_]/i.test(voice.lang || ''))
+  const femaleHints = [
+    'female',
+    'woman',
+    'samantha',
+    'victoria',
+    'karen',
+    'susan',
+    'zira',
+    'jenny',
+    'aria',
+    'ava',
+    'emma'
+  ]
+
+  return (
+    englishVoices.find((voice) =>
+      femaleHints.some((hint) => voice.name.toLowerCase().includes(hint))
+    ) ||
+    englishVoices.find((voice) => /en-US/i.test(voice.lang || '')) ||
+    englishVoices[0] ||
+    voices[0] ||
+    null
+  )
+}
+
+function getContactCount(callsign) {
+  if (!callsign) return 0
+  if (props.contactCounts instanceof Map) {
+    return props.contactCounts.get(callsign) || props.contactCounts.get(callsign.toLowerCase()) || 0
+  }
+  return props.contactCounts?.[callsign] || props.contactCounts?.[callsign.toLowerCase()] || 0
+}
+
+function hasTodayContact(callsign) {
+  if (!callsign) return false
+  if (props.todayContactedCallsigns instanceof Set) {
+    return (
+      props.todayContactedCallsigns.has(callsign) ||
+      props.todayContactedCallsigns.has(callsign.toLowerCase())
+    )
+  }
+  return Boolean(
+    props.todayContactedCallsigns?.[callsign] ||
+      props.todayContactedCallsigns?.[callsign.toLowerCase()]
+  )
+}
+
+function loadVoiceHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(VOICE_HISTORY_KEY) || '{}')
+  } catch {
+    return {}
+  }
+}
+
+function saveVoiceHistory(history) {
+  const now = Date.now()
+  const pruned = Object.fromEntries(
+    Object.entries(history).filter(([, timestamp]) => now - Number(timestamp) < 24 * 60 * 60 * 1000)
+  )
+  localStorage.setItem(VOICE_HISTORY_KEY, JSON.stringify(pruned))
+}
+
+function getVoicePlan(callsign) {
+  const history = loadVoiceHistory()
+  const lastSeenAt = Number(history[callsign] || 0)
+  if (lastSeenAt && Date.now() - lastSeenAt < VOICE_REPEAT_INTERVAL_MS) {
+    return null
+  }
+
+  if (getContactCount(callsign) <= 0) {
+    return { beepCount: 3, label: '历史新呼号' }
+  }
+
+  if (!hasTodayContact(callsign)) {
+    return { beepCount: 2, label: '今日新呼号' }
+  }
+
+  return { beepCount: 0, label: '10分钟未出现' }
+}
+
+function getAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext
+  if (!AudioContextClass) return null
+  if (!audioContext) audioContext = new AudioContextClass()
+  return audioContext
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function playBeeps(count) {
+  const context = getAudioContext()
+  if (!context || count <= 0) return
+  if (context.state === 'suspended') await context.resume()
+
+  for (let index = 0; index < count; index += 1) {
+    const oscillator = context.createOscillator()
+    const gain = context.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.value = 920
+    gain.gain.value = 0.08
+    oscillator.connect(gain)
+    gain.connect(context.destination)
+    oscillator.start()
+    oscillator.stop(context.currentTime + 0.12)
+    await sleep(210)
+  }
+}
+
+function speakCallsign(callsign) {
+  return new Promise((resolve) => {
+    if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+      resolve()
+      return
+    }
+
+    const utterance = new SpeechSynthesisUtterance(formatCallsignForSpeech(callsign))
+    const voice = getPreferredSpeechVoice()
+    if (voice) utterance.voice = voice
+    utterance.lang = 'en-US'
+    utterance.rate = 0.66
+    utterance.pitch = 1
+    utterance.onend = resolve
+    utterance.onerror = resolve
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utterance)
+  })
+}
+
+async function announceCallsign(callsign) {
+  if (props.voiceMode === 'off' || props.voiceMode === 'radio' || !callsign) return
+  const plan = getVoicePlan(callsign)
+  if (!plan) return
+
+  const history = loadVoiceHistory()
+  history[callsign] = Date.now()
+  saveVoiceHistory(history)
+
+  voiceStatus.value = `正在播报：${callsign}（${plan.label}）`
+  await speakCallsign(callsign)
+  await playBeeps(plan.beepCount)
+  voiceStatus.value = ''
 }
 
 function dedupeLatestByCallsign(rows) {
@@ -307,12 +660,20 @@ async function refreshDashboard() {
   error.value = ''
 
   try {
-    const [station, qsoResponse, pinnedList] = await Promise.all([
+    const [station, qsoResponse, pinnedList, coordinate] = await Promise.all([
       client.getCurrentStation(),
       client.getQsoList(0, 20, props.selectedFromCallsign || ''),
-      client.getAllPinnedStations()
+      client.getAllPinnedStations(),
+      client.getCoordinate().catch(() => null)
     ])
     currentStation.value = station
+    if (
+      coordinate &&
+      typeof coordinate.latitude === 'number' &&
+      typeof coordinate.longitude === 'number'
+    ) {
+      fmoCoordinate.value = { lat: coordinate.latitude, lng: coordinate.longitude }
+    }
     pinnedRelayNames.value = (pinnedList || []).map((item) => normalizeRelayName(item.name))
     loadingStation.value = false
 
@@ -354,6 +715,68 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () =>
+    currentSpeakingRecord.value
+      ? `${currentSpeakingRecord.value.callsign}-${currentSpeakingRecord.value.startTime}`
+      : '',
+  () => {
+    if (props.voiceMode !== 'full') return
+    const callsign = getCallsign(currentSpeakingRecord.value)
+    announceCallsign(callsign)
+  }
+)
+
+watch(
+  () =>
+    speakingHistory.value
+      .filter((item) => item.callsign && item.endTime)
+      .map((item) => `${item.callsign}-${item.startTime}-${item.endTime}`)
+      .join('|'),
+  () => {
+    if (props.voiceMode !== 'after') return
+    const latestEnded = [...speakingHistory.value]
+      .filter((item) => item.callsign && item.endTime)
+      .sort((a, b) => (b.endTime || 0) - (a.endTime || 0))[0]
+    const callsign = getCallsign(latestEnded)
+    announceCallsign(callsign)
+  }
+)
+
+watch(
+  () => props.voiceMode,
+  async (mode) => {
+    window.speechSynthesis?.cancel()
+    if (mode === 'off') {
+      voiceStatus.value = '已关闭所有声音'
+    } else {
+      const context = getAudioContext()
+      if (context?.state === 'suspended') {
+        try {
+          await context.resume()
+        } catch {
+          // 浏览器可能要求再次点击页面后才允许播放。
+        }
+      }
+      const labelMap = {
+        full: '播报呼号+提示',
+        after: '通联结束后播报',
+        radio: '仅通联',
+        off: '关闭所有声音'
+      }
+      voiceStatus.value = `声音模式：${labelMap[mode] || mode}`
+    }
+    setTimeout(() => {
+      if (
+        voiceStatus.value === '已关闭所有声音' ||
+        voiceStatus.value.startsWith('声音模式：')
+      ) {
+        voiceStatus.value = ''
+      }
+    }, 1800)
+  }
+)
+
 async function switchRelay(relayName) {
   if (!relayName || switchingRelay.value) return
   switchingRelay.value = relayName
@@ -383,6 +806,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
+  window.speechSynthesis?.cancel()
 })
 </script>
 
@@ -408,8 +832,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
+  gap: 1.25rem;
+  padding: 1rem;
   flex-shrink: 0;
 }
 
@@ -433,8 +857,125 @@ onUnmounted(() => {
 .station-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: flex-end;
+  gap: 1rem;
   flex-shrink: 0;
+  margin-left: auto;
+}
+
+.active-contact-card {
+  min-width: 0;
+  flex: 1;
+}
+
+.active-contact-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.active-contact-primary {
+  min-width: 0;
+}
+
+.active-contact-primary h2,
+.active-contact-empty h2 {
+  margin: 0.15rem 0;
+  color: var(--text-primary);
+  font-size: clamp(1.8rem, 4vw, 3.1rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.active-contact-primary p,
+.active-contact-empty p {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+  line-height: 1.45;
+}
+
+.active-contact-card.idle .active-contact-empty h2 {
+  color: var(--text-secondary);
+}
+
+.bearing-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 190px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.bearing-panel strong,
+.bearing-panel span {
+  display: block;
+  white-space: nowrap;
+}
+
+.bearing-panel strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.bearing-panel span {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+}
+
+.compass {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border: 2px solid var(--border-secondary);
+  border-radius: 50%;
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.compass::before {
+  content: 'N';
+  position: absolute;
+  top: 2px;
+  color: var(--text-tertiary);
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.compass-arrow {
+  display: block;
+  transform-origin: 50% 58%;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.compass.unavailable {
+  color: var(--text-disabled);
+}
+
+.station-summary {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 210px;
+  text-align: right;
+}
+
+.station-summary strong {
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.station-summary span:last-child {
+  color: var(--text-tertiary);
+  font-size: 0.82rem;
 }
 
 .refresh-btn {
@@ -621,6 +1162,23 @@ onUnmounted(() => {
   .panel-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .active-contact-main,
+  .station-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .station-summary {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .bearing-panel {
+    min-width: 0;
+    width: calc(100% - 1.4rem);
   }
 
   .live-table {

@@ -27,8 +27,10 @@
       :is-audio-muted="isAudioMuted"
       :today-contacted-callsigns="settings.todayContactedCallsigns.value"
       :contact-counts="settings.contactCounts.value"
+      :voice-mode="dashboardVoiceMode"
       @click="showSpeakingHistory = true"
       @toggle-audio="handleToggleAudio"
+      @update-voice-mode="handleUpdateDashboardVoiceMode"
     />
 
     <!-- 下拉刷新指示器（触摸设备，在 content-area 上方） -->
@@ -75,6 +77,8 @@
           :multi-sync-progress="fmoSync.multiSyncProgress.value"
           :audio-volume="settings.audioVolume.value"
           :contact-counts="settings.contactCounts.value"
+          :today-contacted-callsigns="settings.todayContactedCallsigns.value"
+          :voice-mode="dashboardVoiceMode"
           @execute-query="executeQuery"
           @show-callsign-records="handleShowCallsignRecords"
           @select-files="triggerFileInput"
@@ -246,6 +250,13 @@ const showQuickNav = ref(false)
 
 // 服务器列表弹框状态
 const showStationList = ref(false)
+function normalizeDashboardVoiceMode(mode) {
+  if (mode === 'beep') return 'full'
+  return ['full', 'after', 'radio', 'off'].includes(mode) ? mode : 'radio'
+}
+const dashboardVoiceMode = ref(
+  normalizeDashboardVoiceMode(localStorage.getItem('fmo_dashboard_voice_mode'))
+)
 
 // 下拉刷新状态（触摸设备，包括原生 App 和手机浏览器）
 const supportsPullToRefresh = 'ontouchstart' in window
@@ -1235,6 +1246,9 @@ watch(
 // 音频控制
 function handleToggleAudio() {
   toggleAudio(settings.fmoAddress.value, settings.protocol.value)
+  const nextMode = isAudioPlaying.value ? 'radio' : 'off'
+  dashboardVoiceMode.value = nextMode
+  localStorage.setItem('fmo_dashboard_voice_mode', nextMode)
   // 同步播放状态到缓存
   settings.setAudioPlaying(isAudioPlaying.value)
   // 如果刚开始播放，应用用户设定的音量
@@ -1243,9 +1257,35 @@ function handleToggleAudio() {
   }
 }
 
+function handleUpdateDashboardVoiceMode(mode) {
+  const nextMode = normalizeDashboardVoiceMode(mode)
+  dashboardVoiceMode.value = nextMode
+  localStorage.setItem('fmo_dashboard_voice_mode', nextMode)
+
+  if (nextMode === 'off') {
+    if (isAudioPlaying.value) {
+      stopAudio()
+    }
+    settings.setAudioPlaying(false)
+    return
+  }
+
+  if (!isAudioPlaying.value && settings.fmoAddress.value) {
+    toggleAudio(settings.fmoAddress.value, settings.protocol.value)
+  }
+  settings.setAudioPlaying(isAudioPlaying.value)
+  if (isAudioPlaying.value && !isAudioMuted.value) {
+    setAudioVolumePlayer(settings.audioVolume.value)
+  }
+}
+
 // 恢复音频播放状态（页面加载时调用）
 function restoreAudioPlayback() {
-  if (settings.audioPlaying.value && settings.fmoAddress.value) {
+  if (
+    settings.audioPlaying.value &&
+    settings.fmoAddress.value &&
+    dashboardVoiceMode.value !== 'off'
+  ) {
     toggleAudio(settings.fmoAddress.value, settings.protocol.value)
     if (isAudioPlaying.value && !isAudioMuted.value) {
       setAudioVolumePlayer(settings.audioVolume.value)
