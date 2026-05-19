@@ -1428,8 +1428,8 @@ async function handleHardwareBack({ canGoBack }) {
     return
   }
 
-  // 2) 在通联日志首页时，忽略历史记录栈，直接询问退出（防止退回到之前的页面）
-  if (route.path === '/logs') {
+  // 2) 在仪表盘首页时，忽略历史记录栈，直接询问退出（防止退回到之前的页面）
+  if (route.path === '/dashboard') {
     if (exitConfirming) return
     exitConfirming = true
     try {

@@ -14,10 +14,14 @@
           </div>
           <div class="bearing-panel">
             <div class="compass" :class="{ unavailable: !activeContact.bearing }">
-              <span
+              <svg
                 class="compass-arrow"
+                viewBox="0 0 24 32"
+                aria-hidden="true"
                 :style="{ transform: `rotate(${activeContact.bearing?.bearing || 0}deg)` }"
-              >▲</span>
+              >
+                <path d="M12 2 21 29 12 23 3 29Z" />
+              </svg>
             </div>
             <div>
               <strong>{{ activeContact.bearing?.direction || '方位未知' }}</strong>
@@ -31,7 +35,7 @@
           </div>
         </div>
         <div v-else class="active-contact-empty">
-          <h2>当前无人发言</h2>
+          <h2>无人发言</h2>
           <p>{{ liveStatusText }}</p>
         </div>
       </div>
@@ -80,6 +84,11 @@
               <td class="callsign-cell">
                 <strong>
                   {{ record.toCallsign || '-' }}
+                  <span
+                    v-if="record.hasLoggedContact"
+                    class="logged-star"
+                    title="已在通联日志中"
+                  >★</span>
                   <span v-if="record.isSpeaking" class="speaking-badge">正在发言</span>
                 </strong>
                 <span v-if="record.toGrid">{{ record.toGrid }}</span>
@@ -232,6 +241,7 @@ const displayRecords = computed(() => {
       relayName: item.serverName || matchedLog?.relayName || currentStation.value?.name || '',
       relayAdmin: matchedLog?.relayAdmin || '',
       isRelayPinned: isRelayPinned(item.serverName || matchedLog?.relayName || currentStation.value?.name),
+      hasLoggedContact: hasLoggedContact(item.callsign, matchedLog),
       isSpeaking: !item.endTime
     }
   })
@@ -247,6 +257,7 @@ const displayRecords = computed(() => {
       qth: getRecordQth(record),
       rowId: `log-${record.logId || record.timestamp || ''}-${record.toCallsign || ''}`,
       isRelayPinned: isRelayPinned(record.relayName),
+      hasLoggedContact: hasLoggedContact(record.toCallsign, record),
       isSpeaking: false
     }))
 
@@ -518,6 +529,10 @@ function hasTodayContact(callsign) {
   )
 }
 
+function hasLoggedContact(callsign, record = null) {
+  return Boolean(record?.logId || getContactCount(callsign) > 0)
+}
+
 function loadVoiceHistory() {
   try {
     return JSON.parse(localStorage.getItem(VOICE_HISTORY_KEY) || '{}')
@@ -593,7 +608,7 @@ function speakCallsign(callsign) {
     const voice = getPreferredSpeechVoice()
     if (voice) utterance.voice = voice
     utterance.lang = 'en-US'
-    utterance.rate = 0.66
+    utterance.rate = 0.33
     utterance.pitch = 1
     utterance.onend = resolve
     utterance.onerror = resolve
@@ -877,14 +892,16 @@ onUnmounted(() => {
 
 .active-contact-primary {
   min-width: 0;
+  display: grid;
+  gap: 0.18rem;
 }
 
 .active-contact-primary h2,
 .active-contact-empty h2 {
-  margin: 0.15rem 0;
+  margin: 0;
   color: var(--text-primary);
-  font-size: clamp(1.8rem, 4vw, 3.1rem);
-  line-height: 1.05;
+  font-size: clamp(1.55rem, 3vw, 2.45rem);
+  line-height: 1;
   letter-spacing: 0;
 }
 
@@ -892,8 +909,8 @@ onUnmounted(() => {
 .active-contact-empty p {
   margin: 0;
   color: var(--text-tertiary);
-  font-size: clamp(0.95rem, 1.6vw, 1.2rem);
-  line-height: 1.45;
+  font-size: clamp(0.86rem, 1.25vw, 1rem);
+  line-height: 1.35;
 }
 
 .active-contact-card.idle .active-contact-empty h2 {
@@ -951,9 +968,15 @@ onUnmounted(() => {
 
 .compass-arrow {
   display: block;
-  transform-origin: 50% 58%;
-  font-size: 1rem;
-  line-height: 1;
+  width: 22px;
+  height: 30px;
+  transform-origin: 50% 50%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.18));
 }
 
 .compass.unavailable {
@@ -1089,6 +1112,16 @@ onUnmounted(() => {
   vertical-align: middle;
 }
 
+.callsign-cell .logged-star {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+  color: #f59e0b;
+  font-size: 0.86rem;
+  line-height: 1;
+  vertical-align: 0.05em;
+}
+
 .time-cell {
   width: 158px;
   white-space: nowrap;
@@ -1164,21 +1197,84 @@ onUnmounted(() => {
     flex-direction: column;
   }
 
-  .active-contact-main,
-  .station-actions {
-    align-items: flex-start;
-    flex-direction: column;
+  .station-band {
+    gap: 0.85rem;
+  }
+
+  .active-contact-card {
     width: 100%;
+  }
+
+  .active-contact-main {
+    align-items: center;
+    flex-direction: row;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .station-actions {
+    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .active-contact-primary {
+    flex: 1 1 auto;
   }
 
   .station-summary {
     min-width: 0;
     text-align: left;
+    flex: 1 1 auto;
   }
 
   .bearing-panel {
-    min-width: 0;
-    width: calc(100% - 1.4rem);
+    min-width: 154px;
+    width: auto;
+    flex: 0 0 auto;
+    gap: 0.55rem;
+    padding: 0.5rem 0.6rem;
+  }
+
+  .compass {
+    width: 38px;
+    height: 38px;
+  }
+
+  .compass-arrow {
+    width: 18px;
+    height: 25px;
+  }
+
+  .active-contact-primary h2,
+  .active-contact-empty h2 {
+    font-size: clamp(1.35rem, 6.8vw, 1.9rem);
+    line-height: 1;
+  }
+
+  .active-contact-primary p,
+  .active-contact-empty p {
+    font-size: 0.88rem;
+    line-height: 1.3;
+  }
+
+  .active-contact-primary p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .refresh-btn {
+    flex: 0 0 auto;
+    padding: 0.42rem 0.75rem;
+  }
+
+  .refresh-time {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .live-table {
@@ -1193,6 +1289,41 @@ onUnmounted(() => {
 @media (max-width: 520px) {
   .dashboard-view {
     padding: 0.75rem;
+  }
+
+  .active-contact-primary h2,
+  .active-contact-empty h2 {
+    font-size: clamp(1.25rem, 6.4vw, 1.7rem);
+  }
+
+  .active-contact-primary p,
+  .active-contact-empty p {
+    font-size: 0.82rem;
+  }
+
+  .bearing-panel {
+    min-width: 138px;
+    gap: 0.45rem;
+    padding: 0.45rem 0.5rem;
+  }
+
+  .bearing-panel strong {
+    font-size: 0.92rem;
+  }
+
+  .bearing-panel span {
+    font-size: 0.75rem;
+  }
+
+  .station-summary strong {
+    font-size: 0.95rem;
+  }
+
+  .station-summary span:last-child {
+    display: block;
+    font-size: 0.74rem;
+    overflow-wrap: anywhere;
+    word-break: break-all;
   }
 
   .live-table {

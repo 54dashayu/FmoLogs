@@ -89,3 +89,6 @@ ios/App/build/
 ios/DerivedData/
 
 web-console/
+
+# Portable release artifacts
+release/

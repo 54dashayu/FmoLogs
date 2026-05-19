@@ -15,7 +15,7 @@
         <p>所有数据都保存在你的设备中，不上传云端，充分保护隐私安全。</p>
         <p class="about-links-text">
           <a
-            href="https://github.com/dingle1122/FmoLogs"
+            href="https://github.com/54dashayu/FmoLogs"
             target="_blank"
             rel="noopener noreferrer"
             class="inline-link"
@@ -24,7 +24,7 @@
           </a>
           ·
           <a
-            href="https://github.com/dingle1122/FmoLogs/issues"
+            href="https://github.com/54dashayu/FmoLogs/issues"
             target="_blank"
             rel="noopener noreferrer"
             class="inline-link"

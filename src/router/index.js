@@ -15,7 +15,7 @@ import { getPlatform } from '../platform'
 const children = [
   {
     path: '',
-    redirect: '/logs'
+    redirect: '/dashboard'
   },
   {
     path: 'logs',

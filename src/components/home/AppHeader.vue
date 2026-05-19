@@ -21,11 +21,11 @@
     </nav>
     <div class="header-actions">
       <a
-        href="https://github.com/dingle1122/FmoLogs"
+        href="https://github.com/54dashayu/FmoLogs"
         target="_blank"
         rel="noopener noreferrer"
         class="icon-btn"
-        title="GitHub"
+        title="GitHub：54dashayu/FmoLogs"
       >
         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
           <path

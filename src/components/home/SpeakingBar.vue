@@ -5,13 +5,13 @@
     @click="$emit('click')"
   >
     <div class="speaking-bar-content">
-      <span v-if="currentSpeaker" class="speaking-indicator speaking"></span>
+      <span v-if="isSpeakingNow" class="speaking-indicator speaking"></span>
       <span v-else class="speaking-indicator idle"></span>
       <span class="speaking-text">
-        <template v-if="currentSpeaker">
-          <template v-if="multiSelectMode">
+        <template v-if="displaySpeaker">
+          <template v-if="multiSelectMode && isSpeakingNow">
             <!-- 多选模式：显示所有服务器的当前发言者，格式：呼号[标记]、呼号[标记] -->
-            正在发言:
+            {{ speakerLabel }}:
             <span
               v-for="(speaker, index) in allCurrentSpeakers"
               :key="speaker.addressId"
@@ -29,18 +29,18 @@
           </template>
           <template v-else>
             <!-- 单选模式：只显示当前发言者，不加标记 -->
-            正在发言: <strong>{{ currentSpeaker }}</strong>
-            <span v-if="currentSpeaker === selectedFromCallsign" class="self-tag">您</span>
-            <span v-if="todayContactedCallsigns.has(currentSpeaker)" class="today-star">★</span>
-            <span v-if="contactCounts.get(currentSpeaker)" class="contact-count">
-              x{{ contactCounts.get(currentSpeaker) }}
+            {{ speakerLabel }}: <strong>{{ displaySpeaker }}</strong>
+            <span v-if="displaySpeaker === selectedFromCallsign" class="self-tag">您</span>
+            <span v-if="todayContactedCallsigns.has(displaySpeaker)" class="today-star">★</span>
+            <span v-if="contactCounts.get(displaySpeaker)" class="contact-count">
+              x{{ contactCounts.get(displaySpeaker) }}
             </span>
-            <span v-if="currentSpeakerAddress" class="speaker-address">{{
-              currentSpeakerAddress
+            <span v-if="displaySpeakerAddress" class="speaker-address">{{
+              displaySpeakerAddress
             }}</span>
           </template>
         </template>
-        <template v-else> 当前无人发言 </template>
+        <template v-else> 最后发言 </template>
       </span>
       <button
         class="audio-toggle-btn"
@@ -68,6 +68,8 @@
 </template>
 
 <script setup>
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+
 const props = defineProps({
   currentSpeaker: {
     type: String,
@@ -130,6 +132,65 @@ const props = defineProps({
     type: String,
     default: 'off'
   }
+})
+
+const LINGER_MS = 5000
+const lingeringSpeaker = ref('')
+const lingeringSpeakerAddress = ref('')
+let lingerTimer = null
+
+const displaySpeaker = computed(() => props.currentSpeaker || lingeringSpeaker.value)
+const displaySpeakerAddress = computed(() =>
+  props.currentSpeaker ? props.currentSpeakerAddress : lingeringSpeakerAddress.value
+)
+const isSpeakingNow = computed(() => Boolean(props.currentSpeaker))
+const speakerLabel = computed(() => (props.currentSpeaker ? '正在发言' : '最后发言'))
+
+function clearLingerTimer() {
+  if (lingerTimer) {
+    clearTimeout(lingerTimer)
+    lingerTimer = null
+  }
+}
+
+function rememberCurrentSpeaker() {
+  if (!props.currentSpeaker) return
+  lingeringSpeaker.value = props.currentSpeaker
+  lingeringSpeakerAddress.value = props.currentSpeakerAddress || ''
+}
+
+function clearLingeringSpeakerAfterDelay() {
+  clearLingerTimer()
+  if (!lingeringSpeaker.value) return
+  lingerTimer = setTimeout(() => {
+    lingeringSpeaker.value = ''
+    lingeringSpeakerAddress.value = ''
+    lingerTimer = null
+  }, LINGER_MS)
+}
+
+watch(
+  () => props.currentSpeaker,
+  (speaker) => {
+    if (speaker) {
+      clearLingerTimer()
+      rememberCurrentSpeaker()
+      return
+    }
+    clearLingeringSpeakerAfterDelay()
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.currentSpeakerAddress,
+  () => {
+    if (props.currentSpeaker) rememberCurrentSpeaker()
+  }
+)
+
+onBeforeUnmount(() => {
+  clearLingerTimer()
 })
 
 // 根据 addressId 获取服务器显示名称
