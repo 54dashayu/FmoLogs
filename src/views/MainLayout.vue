@@ -237,6 +237,7 @@ import packageInfo from '../../package.json'
 // 路由
 const route = useRoute()
 const router = useRouter()
+const appVersion = packageInfo.version
 
 // UI 状态
 const showSpeakingHistory = ref(false)
@@ -257,6 +258,9 @@ function normalizeDashboardVoiceMode(mode) {
 const dashboardVoiceMode = ref(
   normalizeDashboardVoiceMode(localStorage.getItem('fmo_dashboard_voice_mode'))
 )
+const USAGE_STATS_HOSTS = new Set(['fmolog.bh1jss.net'])
+const USAGE_STATS_INTERVAL_MS = 30 * 60 * 1000
+const USAGE_STATS_KEY = 'fmo_usage_stats_last_sent'
 
 // 下拉刷新状态（触摸设备，包括原生 App 和手机浏览器）
 const supportsPullToRefresh = 'ontouchstart' in window
@@ -279,6 +283,39 @@ function isRangeSliderTarget(target) {
     depth++
   }
   return false
+}
+
+function sendUsageStatsBeacon(reason = 'init') {
+  if (!USAGE_STATS_HOSTS.has(window.location.hostname)) return
+
+  const activeAddress = settings.activeAddress.value
+  const callsign =
+    activeAddress?.userInfo?.callsign ||
+    selectedFromCallsign.value ||
+    ''
+  if (!callsign && !settings.fmoAddress.value) return
+
+  const now = Date.now()
+  const lastKey = `${USAGE_STATS_KEY}:${activeAddress?.id || settings.fmoAddress.value || 'unknown'}`
+  const lastSent = Number(localStorage.getItem(lastKey) || 0)
+  if (now - lastSent < USAGE_STATS_INTERVAL_MS) return
+  localStorage.setItem(lastKey, String(now))
+
+  const params = new URLSearchParams({
+    callsign: callsign || '-',
+    fmo: settings.fmoAddress.value ? normalizeHost(settings.fmoAddress.value) : '-',
+    protocol: settings.protocol.value || '-',
+    uid: activeAddress?.userInfo?.uid ? String(activeAddress.userInfo.uid) : '-',
+    version: appVersion,
+    reason
+  })
+
+  const url = `/__fmo_stats.gif?${params.toString()}`
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon(url)
+  } else {
+    fetch(url, { method: 'GET', keepalive: true }).catch(() => {})
+  }
 }
 
 function handleTouchStart(e) {
@@ -1199,6 +1236,7 @@ watch(
   async (newVal) => {
     if (newVal) {
       await settings.loadContactCounts(newVal)
+      sendUsageStatsBeacon('callsign')
     }
     if (showSpeakingHistory.value && newVal) {
       await settings.loadTodayContactedCallsigns(newVal)
@@ -1229,6 +1267,7 @@ watch(
     if (dbLoaded.value && availableFromCallsigns.value.length > 0) {
       inferFromCallsign()
     }
+    sendUsageStatsBeacon('active-address')
   },
   { deep: true }
 )
@@ -1499,6 +1538,7 @@ onMounted(async () => {
     messageService.getList(settings.fmoAddress.value, settings.protocol.value, 0).catch((err) => {
       console.error('获取消息列表失败:', err)
     })
+    sendUsageStatsBeacon('init')
   }
 
   // 定时同步：使用 getAddresses 函数模式
