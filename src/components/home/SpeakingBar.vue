@@ -57,10 +57,9 @@
         @click.stop
         @change.stop="$emit('update-voice-mode', $event.target.value)"
       >
-        <option value="full">播报呼号+提示</option>
-        <option value="after">通联结束后播报</option>
-        <option value="radio">仅通联</option>
-        <option value="off">关闭所有声音</option>
+        <option value="alert">新呼号提示</option>
+        <option value="radio">通联播报</option>
+        <option value="off">关闭所有播报</option>
       </select>
       <span class="speaking-expand">点击展开</span>
     </div>

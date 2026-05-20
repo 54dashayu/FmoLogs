@@ -3,7 +3,7 @@
     <div class="header-left">
       <img src="/vite.svg" alt="FMO Logs" class="header-logo" @click="$emit('open-nav-menu')" />
       <span class="header-divider"></span>
-      <h1 class="header-title" @click="$emit('open-nav-menu')">FMO 日志查看器</h1>
+      <h1 class="header-title" @click="$emit('open-nav-menu')">FMO仪表盘</h1>
       <span class="total-logs">
         <span class="star">&#11088;</span>
         <strong>{{ todayLogs }}/{{ totalLogs }}</strong>

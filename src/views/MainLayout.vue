@@ -252,8 +252,9 @@ const showQuickNav = ref(false)
 // 服务器列表弹框状态
 const showStationList = ref(false)
 function normalizeDashboardVoiceMode(mode) {
-  if (mode === 'beep') return 'full'
-  return ['full', 'after', 'radio', 'off'].includes(mode) ? mode : 'radio'
+  if (mode === 'beep' || mode === 'full') return 'alert'
+  if (mode === 'after') return 'radio'
+  return ['alert', 'radio', 'off'].includes(mode) ? mode : 'radio'
 }
 const dashboardVoiceMode = ref(
   normalizeDashboardVoiceMode(localStorage.getItem('fmo_dashboard_voice_mode'))
@@ -1302,7 +1303,7 @@ function handleUpdateDashboardVoiceMode(mode) {
   dashboardVoiceMode.value = nextMode
   localStorage.setItem('fmo_dashboard_voice_mode', nextMode)
 
-  if (nextMode === 'off') {
+  if (nextMode !== 'radio') {
     if (isAudioPlaying.value) {
       stopAudio()
     }
@@ -1324,7 +1325,7 @@ function restoreAudioPlayback() {
   if (
     settings.audioPlaying.value &&
     settings.fmoAddress.value &&
-    dashboardVoiceMode.value !== 'off'
+    dashboardVoiceMode.value === 'radio'
   ) {
     toggleAudio(settings.fmoAddress.value, settings.protocol.value)
     if (isAudioPlaying.value && !isAudioMuted.value) {

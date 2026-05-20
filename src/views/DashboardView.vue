@@ -618,7 +618,7 @@ function speakCallsign(callsign) {
 }
 
 async function announceCallsign(callsign) {
-  if (props.voiceMode === 'off' || props.voiceMode === 'radio' || !callsign) return
+  if (props.voiceMode !== 'alert' || !callsign) return
   const plan = getVoicePlan(callsign)
   if (!plan) return
 
@@ -736,24 +736,8 @@ watch(
       ? `${currentSpeakingRecord.value.callsign}-${currentSpeakingRecord.value.startTime}`
       : '',
   () => {
-    if (props.voiceMode !== 'full') return
+    if (props.voiceMode !== 'alert') return
     const callsign = getCallsign(currentSpeakingRecord.value)
-    announceCallsign(callsign)
-  }
-)
-
-watch(
-  () =>
-    speakingHistory.value
-      .filter((item) => item.callsign && item.endTime)
-      .map((item) => `${item.callsign}-${item.startTime}-${item.endTime}`)
-      .join('|'),
-  () => {
-    if (props.voiceMode !== 'after') return
-    const latestEnded = [...speakingHistory.value]
-      .filter((item) => item.callsign && item.endTime)
-      .sort((a, b) => (b.endTime || 0) - (a.endTime || 0))[0]
-    const callsign = getCallsign(latestEnded)
     announceCallsign(callsign)
   }
 )
@@ -763,7 +747,7 @@ watch(
   async (mode) => {
     window.speechSynthesis?.cancel()
     if (mode === 'off') {
-      voiceStatus.value = '已关闭所有声音'
+      voiceStatus.value = '已关闭所有播报'
     } else {
       const context = getAudioContext()
       if (context?.state === 'suspended') {
@@ -774,16 +758,15 @@ watch(
         }
       }
       const labelMap = {
-        full: '播报呼号+提示',
-        after: '通联结束后播报',
-        radio: '仅通联',
-        off: '关闭所有声音'
+        alert: '新呼号提示',
+        radio: '通联播报',
+        off: '关闭所有播报'
       }
       voiceStatus.value = `声音模式：${labelMap[mode] || mode}`
     }
     setTimeout(() => {
       if (
-        voiceStatus.value === '已关闭所有声音' ||
+        voiceStatus.value === '已关闭所有播报' ||
         voiceStatus.value.startsWith('声音模式：')
       ) {
         voiceStatus.value = ''
