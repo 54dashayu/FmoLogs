@@ -26,7 +26,7 @@
 
 最新版便携包在 GitHub Release 中下载：
 
-[FmoLogs-Windows-Portable.zip](https://github.com/54dashayu/FmoLogs/releases/latest)
+[FMO-Dashboard-Windows-Portable.zip](https://github.com/54dashayu/FmoLogs/releases/latest)
 
 使用方式：
 

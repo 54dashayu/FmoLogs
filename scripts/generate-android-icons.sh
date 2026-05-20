@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# 从 public/vite.png 生成 Android 各密度启动图标（含 legacy / round / adaptive foreground）。
+# 从 public/app-icon.png 生成 Android 各密度启动图标（含 legacy / round / adaptive foreground）。
 # 布局：白底 + 内容居中留安全边距。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC_PNG="$ROOT/public/vite.png"
+SRC_PNG="$ROOT/public/app-icon.png"
 TMP_DIR="$ROOT/.icon-tmp"
 ANDROID_SRC="$TMP_DIR/icon-android.png"
 RES_DIR="$ROOT/android/app/src/main/res"

@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "FmoLogs",
+  "productName": "FMO仪表盘",
   "version": "../package.json",
-  "identifier": "com.fmologs.application",
+  "identifier": "net.bh1jss.fmodashboard",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "FMO 日志查看器",
+        "title": "FMO仪表盘",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
@@ -29,13 +29,13 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "FmoLogs Team",
-    "copyright": "© 2025 FmoLogs Team",
+    "publisher": "BH1JSS",
+    "copyright": "© 2026 BH1JSS",
     "license": "MIT",
     "licenseFile": "../LICENSE",
     "category": "Utility",
-    "shortDescription": "FMO 日志查看器",
-    "longDescription": "FMO 日志查看器是一款用于查看和管理 FMO 日志的桌面应用，支持多平台运行。",
+    "shortDescription": "FMO仪表盘",
+    "longDescription": "FMO仪表盘是一款面向 FMO 使用者的实时通联仪表盘，支持通联状态、最近通联、QTH、方位距离、中继切换和日志查看。",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -31,10 +31,10 @@ def releaseKsKeyPass  = System.getenv("ANDROID_KEY_PASSWORD")      ?: project.fi
 def hasReleaseKeystore = releaseKsPath && releaseKsPassword && releaseKsAlias && releaseKsKeyPass && file(releaseKsPath).exists()
 
 android {
-    namespace = "com.fmologs.app"
+    namespace = "net.bh1jss.fmodashboard"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.fmologs.app"
+        applicationId "net.bh1jss.fmodashboard"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode

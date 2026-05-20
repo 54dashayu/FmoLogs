@@ -1,4 +1,4 @@
-package com.fmologs.app;
+package net.bh1jss.fmodashboard;
 
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -68,11 +68,11 @@ public class FmoLocationService extends Service {
     public static final String CHANNEL_ID = "fmo_location_report";
     public static final int NOTIFICATION_ID = 0x46_4D_4F_02;
 
-    public static final String ACTION_START = "com.fmologs.app.FMO_LOCATION_START";
-    public static final String ACTION_STOP = "com.fmologs.app.FMO_LOCATION_STOP";
-    public static final String ACTION_UPDATE = "com.fmologs.app.FMO_LOCATION_UPDATE";
-    public static final String ACTION_ALARM = "com.fmologs.app.FMO_LOCATION_ALARM";
-    public static final String ACTION_WARMUP = "com.fmologs.app.FMO_LOCATION_WARMUP";
+    public static final String ACTION_START = "net.bh1jss.fmodashboard.FMO_LOCATION_START";
+    public static final String ACTION_STOP = "net.bh1jss.fmodashboard.FMO_LOCATION_STOP";
+    public static final String ACTION_UPDATE = "net.bh1jss.fmodashboard.FMO_LOCATION_UPDATE";
+    public static final String ACTION_ALARM = "net.bh1jss.fmodashboard.FMO_LOCATION_ALARM";
+    public static final String ACTION_WARMUP = "net.bh1jss.fmodashboard.FMO_LOCATION_WARMUP";
 
     public static final String EXTRA_TITLE = "title";
     public static final String EXTRA_TEXT = "text";
@@ -283,7 +283,7 @@ public class FmoLocationService extends Service {
     }
 
     private static Notification buildNotification(Context ctx, String title, String text) {
-        Intent launch = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("fmologs://location-report"));
+        Intent launch = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("fmodashboard://location-report"));
         PendingIntent contentPI = PendingIntent.getActivity(
                 ctx, 0, launch,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);

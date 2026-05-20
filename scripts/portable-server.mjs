@@ -1,10 +1,11 @@
-import { createReadStream, existsSync, statSync } from 'node:fs'
+import { createReadStream, existsSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { networkInterfaces } from 'node:os'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { spawn } from 'node:child_process'
 
 const root = resolve(process.cwd(), 'app')
+const pidFile = resolve(process.cwd(), 'fmo-dashboard.pid')
 const preferredPort = Number(process.env.PORT || 5180)
 const host = process.env.HOST || '0.0.0.0'
 
@@ -107,6 +108,8 @@ for (let offset = 0; offset < 20; offset += 1) {
 const localUrl = `http://127.0.0.1:${selectedPort}/`
 const lanUrls = getLanAddresses(selectedPort)
 
+writeFileSync(pidFile, String(process.pid), 'utf8')
+
 console.log(`FMO仪表盘 Portable is running at ${localUrl}`)
 if (host === '0.0.0.0') {
   console.log('LAN access addresses:')
@@ -116,3 +119,21 @@ if (host === '0.0.0.0') {
 }
 console.log('Close this window to stop FMO仪表盘.')
 openBrowser(localUrl)
+
+function cleanup() {
+  try {
+    unlinkSync(pidFile)
+  } catch {
+    // Ignore cleanup errors when the file was already removed.
+  }
+}
+
+process.on('exit', cleanup)
+process.on('SIGINT', () => {
+  cleanup()
+  process.exit(0)
+})
+process.on('SIGTERM', () => {
+  cleanup()
+  process.exit(0)
+})

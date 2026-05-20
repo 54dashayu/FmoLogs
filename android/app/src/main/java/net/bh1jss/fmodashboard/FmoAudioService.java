@@ -1,4 +1,4 @@
-package com.fmologs.app;
+package net.bh1jss.fmodashboard;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -35,12 +35,12 @@ public class FmoAudioService extends Service {
     public static final String CHANNEL_ID = "fmo_audio_playback";
     public static final int NOTIFICATION_ID = 0x46_4D_4F_01;
 
-    public static final String ACTION_START = "com.fmologs.app.FMO_AUDIO_START";
-    public static final String ACTION_STOP = "com.fmologs.app.FMO_AUDIO_STOP";
-    public static final String ACTION_UPDATE = "com.fmologs.app.FMO_AUDIO_UPDATE";
-    public static final String ACTION_MUTE = "com.fmologs.app.FMO_AUDIO_MUTE";
-    public static final String ACTION_UNMUTE = "com.fmologs.app.FMO_AUDIO_UNMUTE";
-    public static final String ACTION_STOP_CLICK = "com.fmologs.app.FMO_AUDIO_STOP_CLICK";
+    public static final String ACTION_START = "net.bh1jss.fmodashboard.FMO_AUDIO_START";
+    public static final String ACTION_STOP = "net.bh1jss.fmodashboard.FMO_AUDIO_STOP";
+    public static final String ACTION_UPDATE = "net.bh1jss.fmodashboard.FMO_AUDIO_UPDATE";
+    public static final String ACTION_MUTE = "net.bh1jss.fmodashboard.FMO_AUDIO_MUTE";
+    public static final String ACTION_UNMUTE = "net.bh1jss.fmodashboard.FMO_AUDIO_UNMUTE";
+    public static final String ACTION_STOP_CLICK = "net.bh1jss.fmodashboard.FMO_AUDIO_STOP_CLICK";
 
     public static final String EXTRA_TITLE = "title";
     public static final String EXTRA_TEXT = "text";

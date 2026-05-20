@@ -1,5 +1,5 @@
 {
-  "appId": "com.fmologs.app",
+  "appId": "net.bh1jss.fmodashboard",
   "appName": "FMO仪表盘",
   "webDir": "dist",
   "bundledWebRuntime": false,

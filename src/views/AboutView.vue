@@ -3,7 +3,7 @@
     <h1 class="page-title">关于</h1>
     <div class="about-header">
       <div class="about-left">
-        <img src="/vite.svg" alt="FMO仪表盘" class="about-logo" />
+        <img src="/app-icon.png" alt="FMO仪表盘" class="about-logo" />
         <div class="about-title">FMO仪表盘</div>
         <div class="about-version">{{ appVersion }}</div>
       </div>

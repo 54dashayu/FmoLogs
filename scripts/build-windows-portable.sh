@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RELEASE_DIR="$ROOT_DIR/release"
-PACKAGE_NAME="FmoLogs-Windows-Portable"
+PACKAGE_NAME="FMO-Dashboard-Windows-Portable"
 PACKAGE_DIR="$RELEASE_DIR/$PACKAGE_NAME"
 NODE_VERSION="${NODE_VERSION:-v26.0.0}"
 NODE_ZIP="node-${NODE_VERSION}-win-x64.zip"
@@ -30,6 +30,8 @@ rm -rf "$tmp_node_dir"
 cp -R dist/. "$PACKAGE_DIR/app/"
 cp scripts/portable-server.mjs "$PACKAGE_DIR/server.mjs"
 cp scripts/start-windows.bat "$PACKAGE_DIR/start-windows.bat"
+cp scripts/start-windows-hidden.vbs "$PACKAGE_DIR/start-windows-hidden.vbs"
+cp scripts/stop-windows.bat "$PACKAGE_DIR/stop-windows.bat"
 cp scripts/PORTABLE_README.md "$PACKAGE_DIR/README.md"
 
 (

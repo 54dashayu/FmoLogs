@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# FmoLogs Android 快速编译部署到真机脚本
+# FMO仪表盘 Android 快速编译部署到真机脚本
 # 用法: bash scripts/android-deploy.sh [选项]
 #
 # 选项:
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 # ---- 配置 ----
-APP_ID="com.fmologs.app"
+APP_ID="net.bh1jss.fmodashboard"
 APP_ACTIVITY="${APP_ID}/.MainActivity"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ANDROID_DIR="$PROJECT_DIR/android"

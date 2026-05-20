@@ -1,4 +1,4 @@
-package com.fmologs.app;
+package net.bh1jss.fmodashboard;
 
 import android.util.Log;
 

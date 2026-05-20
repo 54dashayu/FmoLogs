@@ -1,7 +1,7 @@
 <template>
   <header class="header">
     <div class="header-left">
-      <img src="/vite.svg" alt="FMO Logs" class="header-logo" @click="$emit('open-nav-menu')" />
+      <img src="/app-icon.png" alt="FMO仪表盘" class="header-logo" @click="$emit('open-nav-menu')" />
       <span class="header-divider"></span>
       <h1 class="header-title" @click="$emit('open-nav-menu')">FMO仪表盘</h1>
       <span class="total-logs">
