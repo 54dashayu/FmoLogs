@@ -45,7 +45,7 @@
       <button
         class="audio-toggle-btn"
         :class="{ playing: isAudioPlaying, muted: isAudioMuted }"
-        :title="isAudioPlaying ? (isAudioMuted ? '已静音' : '停止播放') : '播放音频'"
+        :title="isAudioPlaying ? (isAudioMuted ? '已静音' : '关闭所有播报') : '开启通联播报'"
         @click.stop="$emit('toggle-audio')"
       >
         <span class="audio-icon">{{ isAudioPlaying ? '■' : '▶' }}</span>

@@ -23,7 +23,7 @@
       :address-list="settings.addressList.value"
       :multi-select-mode="settings.multiSelectMode.value"
       :active-address-id="settings.activeAddressId.value"
-      :is-audio-playing="isAudioPlaying"
+      :is-audio-playing="dashboardVoiceMode !== 'off'"
       :is-audio-muted="isAudioMuted"
       :today-contacted-callsigns="settings.todayContactedCallsigns.value"
       :contact-counts="settings.contactCounts.value"
@@ -1286,13 +1286,25 @@ watch(
 
 // 音频控制
 function handleToggleAudio() {
-  toggleAudio(settings.fmoAddress.value, settings.protocol.value)
-  const nextMode = isAudioPlaying.value ? 'radio' : 'off'
+  if (dashboardVoiceMode.value !== 'off') {
+    if (isAudioPlaying.value) {
+      stopAudio()
+    }
+    const nextMode = 'off'
+    dashboardVoiceMode.value = nextMode
+    localStorage.setItem('fmo_dashboard_voice_mode', nextMode)
+    settings.setAudioPlaying(false)
+    return
+  }
+
+  const nextMode = 'radio'
   dashboardVoiceMode.value = nextMode
   localStorage.setItem('fmo_dashboard_voice_mode', nextMode)
-  // 同步播放状态到缓存
+
+  if (!isAudioPlaying.value && settings.fmoAddress.value) {
+    toggleAudio(settings.fmoAddress.value, settings.protocol.value)
+  }
   settings.setAudioPlaying(isAudioPlaying.value)
-  // 如果刚开始播放，应用用户设定的音量
   if (isAudioPlaying.value && !isAudioMuted.value) {
     setAudioVolumePlayer(settings.audioVolume.value)
   }

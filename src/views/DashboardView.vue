@@ -588,7 +588,7 @@ async function playBeeps(count) {
     const gain = context.createGain()
     oscillator.type = 'sine'
     oscillator.frequency.value = 920
-    gain.gain.value = 0.08
+    gain.gain.value = 0.112
     oscillator.connect(gain)
     gain.connect(context.destination)
     oscillator.start()
@@ -609,6 +609,7 @@ function speakCallsign(callsign) {
     if (voice) utterance.voice = voice
     utterance.lang = 'en-US'
     utterance.rate = 0.33
+    utterance.volume = 1
     utterance.pitch = 1
     utterance.onend = resolve
     utterance.onerror = resolve
