@@ -2,7 +2,7 @@
   <div class="dashboard-view">
     <section class="station-band">
       <div class="active-contact-card" :class="{ idle: !activeContact }">
-        <span class="eyebrow">{{ activeContact ? '当前通联' : '当前状态' }}</span>
+        <span class="eyebrow">{{ activeContact?.isSpeaking ? '当前通联' : '最后发言' }}</span>
         <div v-if="activeContact" class="active-contact-main">
           <div class="active-contact-primary">
             <h2>{{ activeContact.callsign }}</h2>
@@ -89,6 +89,7 @@
                     class="logged-star"
                     title="已在通联日志中"
                   >★</span>
+                  <span v-if="record.isSelf" class="self-badge">您</span>
                   <span v-if="record.isSpeaking" class="speaking-badge">正在发言</span>
                 </strong>
                 <span v-if="record.toGrid">{{ record.toGrid }}</span>
@@ -175,9 +176,12 @@ const pinnedRelayNames = ref([])
 const qthCache = ref({})
 const fmoCoordinate = ref(null)
 const voiceStatus = ref('')
+const activeNow = ref(Date.now())
 let timer = null
+let activeTimer = null
 let audioContext = null
 const REFRESH_INTERVAL_MS = 5000
+const ACTIVE_CONTACT_LINGER_MS = 5000
 const VOICE_REPEAT_INTERVAL_MS = 10 * 60 * 1000
 const VOICE_HISTORY_KEY = 'fmo_dashboard_voice_history'
 
@@ -205,8 +209,15 @@ const currentSpeakingRecord = computed(() => {
     .sort((a, b) => (b.startTime || 0) - (a.startTime || 0))[0] || null
 })
 
+const recentEndedSpeakingRecord = computed(() => {
+  const now = activeNow.value
+  return [...speakingHistory.value]
+    .filter((item) => item.endTime && item.callsign && now - item.endTime <= ACTIVE_CONTACT_LINGER_MS)
+    .sort((a, b) => (b.endTime || 0) - (a.endTime || 0))[0] || null
+})
+
 const activeContact = computed(() => {
-  const current = currentSpeakingRecord.value
+  const current = currentSpeakingRecord.value || recentEndedSpeakingRecord.value
   if (!current) return null
 
   const matchedLog = findMatchingLog(current)
@@ -220,7 +231,8 @@ const activeContact = computed(() => {
     grid,
     qth,
     bearing,
-    bearingHint: getBearingHint(grid)
+    bearingHint: getBearingHint(grid),
+    isSpeaking: !current.endTime
   }
 })
 
@@ -242,6 +254,7 @@ const displayRecords = computed(() => {
       relayAdmin: matchedLog?.relayAdmin || '',
       isRelayPinned: isRelayPinned(item.serverName || matchedLog?.relayName || currentStation.value?.name),
       hasLoggedContact: hasLoggedContact(item.callsign, matchedLog),
+      isSelf: isSelfCallsign(item.callsign),
       isSpeaking: !item.endTime
     }
   })
@@ -258,6 +271,7 @@ const displayRecords = computed(() => {
       rowId: `log-${record.logId || record.timestamp || ''}-${record.toCallsign || ''}`,
       isRelayPinned: isRelayPinned(record.relayName),
       hasLoggedContact: hasLoggedContact(record.toCallsign, record),
+      isSelf: isSelfCallsign(record.toCallsign),
       isSpeaking: false
     }))
 
@@ -474,6 +488,14 @@ function getCallsign(record) {
   return (record?.toCallsign || record?.callsign || '').toUpperCase()
 }
 
+function normalizeCallsign(callsign) {
+  return String(callsign || '').trim().toUpperCase()
+}
+
+function isSelfCallsign(callsign) {
+  return Boolean(normalizeCallsign(callsign) && normalizeCallsign(callsign) === normalizeCallsign(props.selectedFromCallsign))
+}
+
 function formatCallsignForSpeech(callsign) {
   return callsign.split('').join(' ')
 }
@@ -620,6 +642,7 @@ function speakCallsign(callsign) {
 
 async function announceCallsign(callsign) {
   if (props.voiceMode !== 'alert' || !callsign) return
+  if (isSelfCallsign(callsign)) return
   const plan = getVoicePlan(callsign)
   if (!plan) return
 
@@ -801,10 +824,14 @@ onMounted(() => {
   }
   refreshDashboard()
   timer = setInterval(refreshDashboard, REFRESH_INTERVAL_MS)
+  activeTimer = setInterval(() => {
+    activeNow.value = Date.now()
+  }, 1000)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
+  if (activeTimer) clearInterval(activeTimer)
   window.speechSynthesis?.cancel()
 })
 </script>
@@ -1104,6 +1131,20 @@ onUnmounted(() => {
   font-size: 0.86rem;
   line-height: 1;
   vertical-align: 0.05em;
+}
+
+.callsign-cell .self-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.28rem;
+  border: 1px solid rgba(64, 158, 255, 0.45);
+  border-radius: 4px;
+  padding: 0.04rem 0.28rem;
+  color: var(--color-primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  vertical-align: middle;
 }
 
 .time-cell {

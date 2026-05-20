@@ -3,16 +3,16 @@
     <h1 class="page-title">关于</h1>
     <div class="about-header">
       <div class="about-left">
-        <img src="/vite.svg" alt="FmoLogs" class="about-logo" />
-        <div class="about-title">FmoLogs</div>
+        <img src="/vite.svg" alt="FMO仪表盘" class="about-logo" />
+        <div class="about-title">FMO仪表盘</div>
         <div class="about-version">{{ appVersion }}</div>
       </div>
       <div class="about-description">
         <p>
-          FmoLogs 是一款 FMO
-          通联日志管理工具，支持导入本地日志文件、实时同步远程通联记录，还能查询和统计通联数据。
+          FMO仪表盘 是基于 FmoLogs 改进的 FMO 网页工具，目标是把“正在通联、当前中继、最近通联”
+          放在最直观的位置，方便电台旁边的电脑、平板和手机快速查看。
         </p>
-        <p>所有数据都保存在你的设备中，不上传云端，充分保护隐私安全。</p>
+        <p>本版本保留原项目的日志查看能力，并围绕仪表盘、中继切换、呼号提醒和本地便携运行做了增强。</p>
         <p class="about-links-text">
           <a
             href="https://github.com/54dashayu/FmoLogs"
@@ -33,6 +33,29 @@
           </a>
         </p>
       </div>
+    </div>
+
+    <div class="about-section">
+      <div class="section-title">主要功能</div>
+      <ul class="feature-list">
+        <li>仪表盘首页显示当前通联呼号、时间、QTH、相对方位和距离。</li>
+        <li>最近通联列表实时刷新，支持呼号去重、已通联星标和本人呼号标记。</li>
+        <li>中继名称可点击切换，远程控制页支持查看当前中继和收藏状态。</li>
+        <li>呼号可跳转到 QRZ 查询页面，便于快速确认对方资料。</li>
+        <li>新呼号提示可播放呼号和提示音，也可切换为通联播报或关闭所有播报。</li>
+        <li>支持本地 Win64 便携包、安卓测试包和 VPS 部署访问。</li>
+      </ul>
+    </div>
+
+    <div class="about-section">
+      <div class="section-title">在 BH5HSJ 原项目基础上的改进</div>
+      <ul class="feature-list">
+        <li>将仪表盘作为更适合实时守听的入口，并调整导航顺序。</li>
+        <li>增加 FMO 中继控制、日志中继快捷切换和收藏状态显示。</li>
+        <li>优化移动端仪表盘排版，减少字体包体积，降低服务器流量。</li>
+        <li>增加 VPS 统计页部署说明，便于了解访问量和大致流量。</li>
+        <li>补充 Windows 便携运行说明，让不熟悉开发环境的用户也能解压即用。</li>
+      </ul>
     </div>
 
     <div class="about-thanks">
@@ -75,7 +98,7 @@
     </div>
 
     <div class="about-footer">
-      <p>由 BH5HSJ 后视镜 贡献</p>
+      <p>由 BH1JSS 机婶婶 贡献</p>
       <p>开源项目 · 欢迎贡献</p>
     </div>
   </div>
@@ -83,11 +106,10 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import packageInfo from '../../package.json'
 import sponsorList from '../data/sponsors.json'
 import thanksList from '../data/thanks.json'
 
-const appVersion = computed(() => `v${packageInfo.version}`)
+const appVersion = computed(() => 'v0.98')
 
 const showCoffee = ref(false)
 </script>
@@ -178,6 +200,36 @@ const showCoffee = ref(false)
 .inline-link:hover {
   color: var(--color-primary-hover);
   text-decoration: underline;
+}
+
+.about-section {
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.feature-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+
+.feature-list li + li {
+  margin-top: 0.35rem;
 }
 
 .about-thanks {

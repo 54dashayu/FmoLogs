@@ -4,6 +4,10 @@
         "contribution": "提供完美的FMO硬件平台"
     },
     {
+        "name": "BH5HSJ",
+        "contribution": "原 FmoLogs 项目作者，奠定日志查看和数据管理基础"
+    },
+    {
         "name": "BG9JYT",
         "contribution": "提供甘肃集群服务器，并提供被控支持"
     },
@@ -30,5 +34,9 @@
     {
         "name": "BG9GOK",
         "contribution": "提供的页面美化建议"
+    },
+    {
+        "name": "BH1KZQ",
+        "contribution": "提供仪表盘列表的想法和使用建议"
     }
 ]
