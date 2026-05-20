@@ -259,7 +259,7 @@ function normalizeDashboardVoiceMode(mode) {
 const dashboardVoiceMode = ref(
   normalizeDashboardVoiceMode(localStorage.getItem('fmo_dashboard_voice_mode'))
 )
-const USAGE_STATS_HOSTS = new Set(['fmolog.bh1jss.net'])
+const USAGE_STATS_HOSTS = new Set(['fmo.bh1jss.net', 'fmolog.bh1jss.net'])
 const USAGE_STATS_INTERVAL_MS = 30 * 60 * 1000
 const USAGE_STATS_KEY = 'fmo_usage_stats_last_sent'
 
