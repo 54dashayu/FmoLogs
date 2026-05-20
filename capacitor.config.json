@@ -1,6 +1,6 @@
 {
   "appId": "com.fmologs.app",
-  "appName": "FmoLogs",
+  "appName": "FMO仪表盘",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {

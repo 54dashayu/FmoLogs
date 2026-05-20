@@ -107,12 +107,12 @@ for (let offset = 0; offset < 20; offset += 1) {
 const localUrl = `http://127.0.0.1:${selectedPort}/`
 const lanUrls = getLanAddresses(selectedPort)
 
-console.log(`FmoLogs Portable is running at ${localUrl}`)
+console.log(`FMO仪表盘 Portable is running at ${localUrl}`)
 if (host === '0.0.0.0') {
   console.log('LAN access addresses:')
   for (const url of lanUrls) {
     console.log(`  ${url}`)
   }
 }
-console.log('Close this window to stop FmoLogs.')
+console.log('Close this window to stop FMO仪表盘.')
 openBrowser(localUrl)
